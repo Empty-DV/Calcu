@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+ <html lang="en">
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>iOS/Google Style Calculator</title>
+   <style>
+     /* Base styles */
+     * {
+       margin: 0;
+       padding: 0;
+       box-sizing: border-box;
+       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+     }
+     
+     :root {
+       --primary: #007AFF;
+       --secondary: #FF9500;
+       --background: #F2F2F7;
+       --text: #000000;
+       --keypad: #FFFFFF;
+       --digit-btn: #f5f5f5;
+       --func-btn: #e0e0e0;
+     }
+     
+     .dark {
+       --primary: #0A84FF;
+       --secondary: #FF9F0A;
+       --background: #121212;
+       --text: #FFFFFF;
+       --keypad: #2C2C2E;
+       --digit-btn: #333333;
+       --func-btn: #505050;
+     }
+     
+     body {
+       min-height: 100vh;
+       display: flex;
+       flex-direction: column;
+       align-items: center;
+       justify-content: center;
+       padding: 1rem;
+       background-color: var(--background);
+       color: var(--text);
+       transition: background-color 0.3s, color 0.3s;
+     }
+     
+     /* Calculator container */
+     .calculator {
+       width: 100%;
+       max-width: 350px;
+       margin: 0 auto;
+       background-color: var(--keypad);
+       border-radius: 1.5rem;
+       overflow: hidden;
+       box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+     }
+     
+     /* Display area */
+     .display {
+       padding: 1.5rem;
+       background-color: var(--background);
+     }
+     
+     .history-toggle {
+       display: flex;
+       align-items: center;
+       margin-bottom: 0.5rem;
+       color: var(--primary);
+       background: none;
+       border: none;
+       font-size: 0.875rem;
+       cursor: pointer;
+     }
+     
+     .history-panel {
+       height: 8rem;
+       overflow-y: auto;
+       margin-bottom: 1rem;
+       display: none;
+     }
+     
+     .history-panel.visible {
+       display: block;
+     }
+     
+     .history-item {
+       text-align: right;
+       opacity: 0.75;
+       margin-bottom: 0.5rem;
+     }
+     
+     .history-calculation {
+       font-size: 0.75rem;
+     }
+     
+     .current-calculation {
+       text-align: right;
+       font-size: 1.25rem;
+       color: rgba(var(--text-rgb), 0.6);
+       min-height: 1.75rem;
+       margin-bottom: 0.25rem;
+     }
+     
+     .current-value {
+       text-align: right;
+       font-size: 2.5rem;
+       font-weight: 600;
+       overflow-x: auto;
+       white-space: nowrap;
+     }
+     
+     /* Keypad */
+     .keypad {
+       display: grid;
+       grid-template-columns: repeat(4, 1fr);
+       gap: 0.5rem;
+       padding: 1rem;
+       background-color: var(--keypad);
+     }
+     
+     .key {
+       height: 3.5rem;
+       border-radius: 9999px;
+       display: flex;
+       align-items: center;
+       justify-content: center;
+       font-size: 1.5rem;
+       font-weight: 500;
+       border: none;
+       cursor: pointer;
+       transition: transform 0.1s, opacity 0.1s;
+     }
+     
+     .key:active {
+       transform: scale(0.95);
+       opacity: 0.9;
+     }
+     
+     .key-digit {
+       background-color: var(--digit-btn);
+       color: var(--text);
+     }
+     
+     .key-function {
+       background-color: var(--func-btn);
+       color: var(--primary);
+     }
+     
+     .key-operator {
+       background-color: var(--secondary);
+       color: white;
+     }
+     
+     .key-equals {
+       background-color: var(--primary);
+       color: white;
+     }
+     
+     .key-zero {
+       grid-column: span 2;
+     }
+     
+     /* Toggle theme button */
+     .theme-toggle {
+       position: absolute;
+       top: 1rem;
+       right: 1rem;
+       width: 2.5rem;
+       height: 2.5rem;
+       border-radius: 50%;
+       background-color: rgba(0, 0, 0, 0.1);
+       border: none;
+       cursor: pointer;
+       display: flex;
+       align-items: center;
+       justify-content: center;
+     }
+     
+     .dark .theme-toggle {
+       background-color: rgba(255, 255, 255, 0.1);
+     }
+     
+     .moon-icon, .sun-icon {
+       width: 1.5rem;
+       height: 1.5rem;
+     }
+     
+     .moon-icon {
+       display: block;
+     }
+     
+     .sun-icon {
+       display: none;
+     }
+     
+     .dark .moon-icon {
+       display: none;
+     }
+     
+     .dark .sun-icon {
+       display: block;
+     }
+     
+     /* Footer message */
+     .footer-text {
+       margin-top: 1.5rem;
+       font-size: 0.75rem;
+       color: rgba(var(--text-rgb), 0.5);
+       text-align: center;
+     }
+   </style>
+ </head>
+ <body>
+   <button class="theme-toggle" aria-label="Toggle dark mode">
+     <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+     </svg>
+     <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+       <circle cx="12" cy="12" r="5"></circle>
+       <line x1="12" y1="1" x2="12" y2="3"></line>
+       <line x1="12" y1="21" x2="12" y2="23"></line>
+       <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+       <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+       <line x1="1" y1="12" x2="3" y2="12"></line>
+       <line x1="21" y1="12" x2="23" y2="12"></line>
+       <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+       <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+     </svg>
+   </button>
+ 
+   <div class="calculator">
+     <div class="display">
+       <button class="history-toggle">
+         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+           <circle cx="12" cy="12" r="10"></circle>
+           <polyline points="12 6 12 12 16 14"></polyline>
+         </svg>
+         History
+       </button>
+       
+       <div class="history-panel" id="historyPanel"></div>
+       
+       <div class="current-calculation" id="calculationDisplay"></div>
+       <div class="current-value" id="valueDisplay">0</div>
+     </div>
+     
+     <div class="keypad">
+       <!-- Row 1 -->
+       <button class="key key-function" data-action="clear">AC</button>
+       <button class="key key-function" data-action="toggle-sign">+/-</button>
+       <button class="key key-function" data-action="percentage">%</button>
+       <button class="key key-operator" data-operator="divide">÷</button>
+       
+       <!-- Row 2 -->
+       <button class="key key-digit" data-digit="7">7</button>
+       <button class="key key-digit" data-digit="8">8</button>
+       <button class="key key-digit" data-digit="9">9</button>
+       <button class="key key-operator" data-operator="multiply">×</button>
+       
+       <!-- Row 3 -->
+       <button class="key key-digit" data-digit="4">4</button>
+       <button class="key key-digit" data-digit="5">5</button>
+       <button class="key key-digit" data-digit="6">6</button>
+       <button class="key key-operator" data-operator="subtract">−</button>
+       
+       <!-- Row 4 -->
+       <button class="key key-digit" data-digit="1">1</button>
+       <button class="key key-digit" data-digit="2">2</button>
+       <button class="key key-digit" data-digit="3">3</button>
+       <button class="key key-operator" data-operator="add">+</button>
+       
+       <!-- Row 5 -->
+       <button class="key key-digit key-zero" data-digit="0">0</button>
+       <button class="key key-digit" data-digit=".">.</button>
+       <button class="key key-equals" data-action="calculate">=</button>
+     </div>
+   </div>
+   
+   <div class="footer-text">
+     Swipe down from display area to view calculation history
+   </div>
+ 
+   <script>
+     document.addEventListener('DOMContentLoaded', function() {
+       // Calculator state
+       let displayValue = '0';
+       let calculation = '';
+       let firstOperand = null;
+       let operator = null;
+       let waitingForSecondOperand = false;
+       let history = [];
+       
+       // Elements
+       const valueDisplay = document.getElementById('valueDisplay');
+       const calculationDisplay = document.getElementById('calculationDisplay');
+       const historyPanel = document.getElementById('historyPanel');
+       const historyToggle = document.querySelector('.history-toggle');
+       const themeToggle = document.querySelector('.theme-toggle');
+       const displayElement = document.querySelector('.display');
+       
+       // Initialize display
+       updateDisplay();
+       
+       // Add event listeners
+       document.querySelectorAll('.key-digit').forEach(button => {
+         button.addEventListener('click', () => {
+           inputDigit(button.dataset.digit);
+         });
+       });
+       
+       document.querySelectorAll('.key-operator').forEach(button => {
+         button.addEventListener('click', () => {
+           handleOperator(button.dataset.operator);
+         });
+       });
+       
+       document.querySelectorAll('[data-action]').forEach(button => {
+         button.addEventListener('click', () => {
+           const action = button.dataset.action;
+           if (action === 'clear') resetCalculator();
+           else if (action === 'calculate') calculate();
+           else if (action === 'toggle-sign') toggleSign();
+           else if (action === 'percentage') percentage();
+         });
+       });
+       
+       historyToggle.addEventListener('click', () => {
+         historyPanel.classList.toggle('visible');
+       });
+       
+       themeToggle.addEventListener('click', () => {
+         document.body.classList.toggle('dark');
+         updateTextRgbVariable();
+       });
+       
+       // Swipe gesture for history
+       let startY = null;
+       
+       displayElement.addEventListener('touchstart', function(e) {
+         startY = e.touches[0].clientY;
+       });
+       
+       displayElement.addEventListener('touchmove', function(e) {
+         if (!startY) return;
+         
+         const currentY = e.touches[0].clientY;
+         const diff = currentY - startY;
+         
+         if (diff > 50) {
+           historyPanel.classList.add('visible');
+           startY = null;
+         }
+       });
+       
+       displayElement.addEventListener('touchend', function() {
+         startY = null;
+       });
+       
+       // Keyboard support
+       document.addEventListener('keydown', function(e) {
+         if (/^[0-9.]$/.test(e.key)) {
+           inputDigit(e.key);
+         } else if (e.key === 'Enter' || e.key === '=') {
+           calculate();
+         } else if (e.key === 'Escape') {
+           resetCalculator();
+         } else if (e.key === 'Backspace') {
+           backspace();
+         } else if (e.key === '+') {
+           handleOperator('add');
+         } else if (e.key === '-') {
+           handleOperator('subtract');
+         } else if (e.key === '*') {
+           handleOperator('multiply');
+         } else if (e.key === '/') {
+           e.preventDefault();
+           handleOperator('divide');
+         } else if (e.key === '%') {
+           percentage();
+         }
+       });
+       
+       // Calculator functions
+       function inputDigit(digit) {
+         if (waitingForSecondOperand) {
+           displayValue = digit;
+           waitingForSecondOperand = false;
+         } else {
+           displayValue = displayValue === '0' ? digit : displayValue + digit;
+         }
+         updateDisplay();
+       }
+       
+       function handleOperator(op) {
+         const inputValue = parseFloat(displayValue);
+         
+         if (operator && waitingForSecondOperand) {
+           operator = op;
+           calculation = calculation.slice(0, -1) + getOperatorSymbol(op);
+           updateDisplay();
+           return;
+         }
+         
+         if (firstOperand === null) {
+           firstOperand = inputValue;
+         } else if (operator) {
+           const result = performCalculation();
+           displayValue = String(result);
+           firstOperand = result;
+         }
+         
+         waitingForSecondOperand = true;
+         operator = op;
+         calculation = (firstOperand === null ? inputValue : firstOperand) + ' ' + getOperatorSymbol(op) + ' ';
+         updateDisplay();
+       }
+       
+       function calculate() {
+         if (firstOperand === null || operator === null) return;
+         
+         const inputValue = parseFloat(displayValue);
+         const result = performCalculation();
+         
+         const historyText = calculation + (waitingForSecondOperand ? '' : displayValue);
+         const newHistoryItem = {
+           calculation: historyText,
+           result: String(result)
+         };
+         
+         history = [newHistoryItem, ...history].slice(0, 5);
+         updateHistoryDisplay();
+         
+         displayValue = String(result);
+         calculation = '';
+         firstOperand = null;
+         operator = null;
+         waitingForSecondOperand = false;
+         updateDisplay();
+       }
+       
+       function performCalculation(secondOperand = parseFloat(displayValue)) {
+         if (operator === 'add') {
+           return firstOperand + secondOperand;
+         } else if (operator === 'subtract') {
+           return firstOperand - secondOperand;
+         } else if (operator === 'multiply') {
+           return firstOperand * secondOperand;
+         } else if (operator === 'divide') {
+           if (secondOperand === 0) {
+             return 'Error';
+           }
+           return firstOperand / secondOperand;
+         }
+         
+         return secondOperand;
+       }
+       
+       function resetCalculator() {
+         displayValue = '0';
+         calculation = '';
+         firstOperand = null;
+         operator = null;
+         waitingForSecondOperand = false;
+         updateDisplay();
+       }
+       
+       function toggleSign() {
+         displayValue = String(-parseFloat(displayValue));
+         updateDisplay();
+       }
+       
+       function percentage() {
+         const value = parseFloat(displayValue);
+         displayValue = String(value / 100);
+         updateDisplay();
+       }
+       
+       function backspace() {
+         if (displayValue.length > 1) {
+           displayValue = displayValue.slice(0, -1);
+         } else {
+           displayValue = '0';
+         }
+         updateDisplay();
+       }
+       
+       function getOperatorSymbol(op) {
+         switch(op) {
+           case 'add': return '+';
+           case 'subtract': return '−';
+           case 'multiply': return '×';
+           case 'divide': return '÷';
+           default: return '';
+         }
+       }
+       
+       function updateDisplay() {
+         valueDisplay.textContent = displayValue;
+         calculationDisplay.textContent = calculation;
+       }
+       
+       function updateHistoryDisplay() {
+         historyPanel.innerHTML = '';
+         history.forEach(item => {
+           const historyItem = document.createElement('div');
+           historyItem.className = 'history-item';
+           
+           const historyCalc = document.createElement('div');
+           historyCalc.className = 'history-calculation';
+           historyCalc.textContent = item.calculation;
+           
+           const historyResult = document.createElement('div');
+           historyResult.textContent = '= ' + item.result;
+           
+           historyItem.appendChild(historyCalc);
+           historyItem.appendChild(historyResult);
+           historyPanel.appendChild(historyItem);
+         });
+       }
+       
+       function updateTextRgbVariable() {
+         document.documentElement.style.setProperty(
+           '--text-rgb', 
+           document.body.classList.contains('dark') ? '255, 255, 255' : '0, 0, 0'
+         );
+       }
+       
+       // Check for system dark mode preference
+       if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+         document.body.classList.add('dark');
+       }
+       
+       // Set initial text RGB values
+       updateTextRgbVariable();
+     });
+   </script>
+ </body>
+ </html>
